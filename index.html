@@ -975,14 +975,36 @@ html.phx-splash-lock,body.phx-splash-lock{overflow:hidden!important;height:100%!
 </nav>
 <script>
 const pages=[...document.querySelectorAll('.page')];
-function showPage(id){if(!document.getElementById(id))id='home';pages.forEach(p=>p.classList.toggle('active',p.id===id));document.querySelectorAll('[data-page]').forEach(b=>{if(b.classList.contains('navbtn')||b.classList.contains('top-link'))b.classList.toggle('active',b.dataset.page===id);});window.scrollTo({top:0,behavior:'auto'});history.replaceState(null,'','#'+id);document.title=(pages.find(p=>p.id===id)?.dataset.title||'Home')+' — PHENIX GROUP';}
-document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
-document.getElementById('aiFab').addEventListener('click',()=>showPage('ai'));
-let navStack=[],curPage='home';const backFab=document.getElementById('backFab'),_showPage=showPage;
-showPage=function(id,isBack){if(!document.getElementById(id))id='home';if(!isBack&&id!==curPage)navStack.push(curPage);curPage=id;_showPage(id);/* Primary navigation pages never show a global back button. Return controls belong only to nested previews. */backFab.classList.add('is-hidden');};
-backFab.classList.add('is-hidden');
-backFab.addEventListener('click',()=>{const modal=document.getElementById('detailModal');if(modal&&modal.classList.contains('open'))closeDetail();else backFab.classList.add('is-hidden');});
-window.addEventListener('hashchange',()=>showPage(location.hash.slice(1)||'home'));
+const pageNavButtons=[...document.querySelectorAll('[data-page]')];
+const backFab=document.getElementById('backFab');
+let curPage='home';
+function renderPage(id){
+  if(!document.getElementById(id)) id='home';
+  curPage=id;
+  pages.forEach(p=>p.classList.toggle('active',p.id===id));
+  pageNavButtons.forEach(b=>{if(b.classList.contains('navbtn')||b.classList.contains('top-link'))b.classList.toggle('active',b.dataset.page===id);});
+  document.title=(pages.find(p=>p.id===id)?.dataset.title||'Home')+' — PHENIX GROUP';
+  window.scrollTo({top:0,behavior:'auto'});
+  if(backFab) backFab.classList.add('is-hidden');
+}
+function showPage(id, options={}){
+  // Keep browser history in sync with the in-page router so Chrome Back/Forward work.
+  if(typeof options==='boolean') options={fromHistory:options};
+  if(!document.getElementById(id)) id='home';
+  const targetHash='#'+id;
+  if(!options.fromHistory && location.hash!==targetHash){
+    try { history.pushState({phenixPage:id},'',targetHash); } catch(e) { location.hash=targetHash; }
+  }
+  renderPage(id);
+}
+pageNavButtons.forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
+document.getElementById('aiFab')?.addEventListener('click',()=>showPage('ai'));
+backFab?.classList.add('is-hidden');
+backFab?.addEventListener('click',()=>{const modal=document.getElementById('detailModal');if(modal&&modal.classList.contains('open'))closeDetail();else backFab.classList.add('is-hidden');});
+window.addEventListener('popstate',()=>renderPage(location.hash.slice(1)||'home'));
+window.addEventListener('hashchange',()=>{const id=location.hash.slice(1)||'home';if(id!==curPage)renderPage(id);});
+// Establish a real initial history entry without adding a duplicate on page load.
+if(!location.hash){try{history.replaceState({phenixPage:'home'},'','#home');}catch(e){}}
 function updatePhenixBackdrop(){document.body.classList.toggle('phx-scrolled',window.scrollY>90);}
 window.addEventListener('scroll',updatePhenixBackdrop,{passive:true});updatePhenixBackdrop();
 const groups={
@@ -1248,7 +1270,7 @@ document.querySelectorAll('[data-mailto-form]').forEach(form=>form.addEventListe
 }));
 
 document.getElementById('year').textContent=new Date().getFullYear();
-showPage(location.hash.slice(1)||'home');
+renderPage(location.hash.slice(1)||'home');
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>const J="https://agent.jotform.com/019ab6add2247795a49b828ef05c40c6454c";
